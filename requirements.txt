@@ -1,4 +1,4 @@
-faster-whisper==0.9.0
+# faster-whisper will be installed separately to handle av compatibility
 websockets
 onnxruntime==1.16.0
 ffmpeg-python
