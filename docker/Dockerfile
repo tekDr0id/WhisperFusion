@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y \
 
 FROM base as devel
 WORKDIR /root/
-RUN pip3 install --no-cache-dir -U tensorrt_llm==0.10.0 --extra-index-url https://pypi.nvidia.com
+RUN pip3 install --no-cache-dir cuda-python~=12.4.0 && \
+    pip3 install --no-cache-dir -U tensorrt_llm==0.10.0 --extra-index-url https://pypi.nvidia.com
 RUN git clone -b v0.10.0 --depth 1 https://github.com/NVIDIA/TensorRT-LLM.git && \
     mv TensorRT-LLM/examples ./TensorRT-LLM-examples && \
     rm -rf TensorRT-LLM

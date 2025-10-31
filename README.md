@@ -45,9 +45,13 @@ We provide a Docker Compose setup to streamline the deployment of the pre-built 
 ```bash
 mkdir docker/scratch-space
 cp docker/scripts/build-* docker/scripts/run-whisperfusion.sh docker/scratch-space/
+# For Windows PowerShell users, the copy command is slightly different:
+# cp docker/scripts/build-*, docker/scripts/run-whisperfusion.sh docker/scratch-space/
 
 docker compose build
 export MODEL=Phi-3-mini-4k-instruct    #Phi-3-mini-128k-instruct or phi-2, By default WhisperFusion uses phi-2
+# For Windows PowerShell users, use this command to set the environment variable:
+# $env:MODEL="Phi-3-mini-4k-instruct"
 docker compose up
 ```
 
