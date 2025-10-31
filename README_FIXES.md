@@ -596,5 +596,46 @@ This should now successfully build because:
 - No forced upgrades breaking dependencies
 
 ---
-#Fix 6
+#Fix 6 Compose
 
+
+Looking at this error, the issue is with the CUDA Python bindings. The error `ImportError: cannot import name 'cudart' from 'cuda' (unknown location)` indicates that the `cuda-python` package is missing or incorrectly installed in your Docker container.
+
+Let me help you fix this. First, I need to see your Docker configuration:Now I can see the issue. The `cuda-python` package is missing from the installation. This package provides the `cuda.cudart` module that TensorRT-LLM needs. Let me check if there are any other relevant scripts and then provide the fix:Now let me check the build-models.sh script to understand where the error occurs:Perfect! Now I understand the issue. The problem is that `cuda-python` package is not installed in the Docker image, but TensorRT-LLM 0.10.0 requires it. Here's the fix:
+
+## Solution
+
+The Dockerfile needs to install the `cuda-python` package. Here's the corrected Dockerfile:Great! Now you need to rebuild the Docker image and run it again. Here are the steps:
+
+## Steps to Fix
+
+1. **Remove the old container and image:**
+```powershell
+docker compose down
+docker rmi whisperfusion:latest
+```
+
+2. **Rebuild with the fixed Dockerfile:**
+```powershell
+docker compose build --no-cache
+```
+
+3. **Start the services:**
+```powershell
+docker compose up
+```
+
+## What I Fixed
+
+The issue was that **`cuda-python`** package was missing from the Docker image. TensorRT-LLM 0.10.0 requires the `cuda.cudart` module which is provided by the `cuda-python` package. 
+
+I added the installation of `cuda-python~=12.4.0` (matching your CUDA 12.4 base image) before installing `tensorrt_llm==0.10.0`.
+
+## Alternative: Quick Test Without Full Rebuild
+
+If you want to test this quickly without rebuilding everything, you could also modify the Dockerfile to install `cuda-python` in the release stage, but the cleanest approach is what I've done above - installing it right before TensorRT-LLM in the devel stage.
+
+Try rebuilding now and let me know if you encounter any other issues!
+
+---
+#Fix 7 compose
