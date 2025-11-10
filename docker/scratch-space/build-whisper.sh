@@ -14,8 +14,6 @@ fi
 echo "Building Whisper TensorRT Engine..."
 uv pip install --system -r requirements.txt > /dev/null 2>&1
 
-<<<<<<< Updated upstream
-=======
 # Fix: Ensure torch and torchaudio versions remain compatible after requirements install
 # The whisper requirements.txt might change versions, so we force them back
 echo "Verifying torch and torchaudio compatibility..."
@@ -48,8 +46,6 @@ fi
 # Clear Python cache to ensure patches take effect
 find /usr/local/lib/python3.10/dist-packages/tensorrt_llm -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 echo "Patches applied successfully"
-
->>>>>>> Stashed changes
 python3 build.py --output_dir whisper_small_en --use_gpt_attention_plugin --use_gemm_plugin  --use_bert_attention_plugin --enable_context_fmha --model_name small.en
 
 mkdir -p /root/scratch-space/models
