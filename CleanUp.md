@@ -12,3 +12,6 @@ docker compose build --no-cache --progress=plain
 # Start and monitor
 docker compose up -d
 docker compose logs -f whisperfusion
+
+# Only if errors with compose and fixes then,
+docker compose down && docker compose up

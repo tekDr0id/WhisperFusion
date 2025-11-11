@@ -9,13 +9,12 @@ cd /root/TensorRT-LLM-examples/phi
 MODEL_TYPE=$1
 echo "Download $MODEL_TYPE Huggingface models..."
 
-phi_path=$(huggingface-cli download --repo-type model microsoft/$MODEL_TYPE)
+# Use hf download instead of deprecated huggingface-cli download to avoid warnings
+phi_path=$(hf download microsoft/$MODEL_TYPE 2>/dev/null || huggingface-cli download --repo-type model microsoft/$MODEL_TYPE 2>/dev/null)
 echo "Building  TensorRT Engine..."
 name=$1
 uv pip install --system -r requirements.txt
 
-<<<<<<< Updated upstream
-=======
 # Fix: Ensure torch and torchaudio versions remain compatible after requirements install
 echo "Verifying torch and torchaudio compatibility..."
 uv pip install --system --force-reinstall 'torch>=2.2.0,<2.4.0' 'torchaudio>=2.2.0,<2.4.0' --index-url https://download.pytorch.org/whl/cu121 > /dev/null 2>&1
@@ -48,7 +47,28 @@ fi
 find /usr/local/lib/python3.10/dist-packages/tensorrt_llm -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
 echo "Patches applied successfully"
 
->>>>>>> Stashed changes
+# Apply CUDA fix (same as in build-whisper.sh)
+echo "🔍 Applying CUDA fix for cudart import..."
+echo "Installing cuda-python==12.4.0..."
+uv pip install --system --force-reinstall "cuda-python==12.4.0" > /dev/null 2>&1
+
+# Test CUDA import
+if python3 -c "from cuda import cudart; print('✓ cudart import successful')" 2>/dev/null; then
+    echo "✅ CUDA fix applied successfully!"
+    echo "CUDA_FIX_APPLIED: cuda-python==12.4.0 in build-phi.sh" >> /root/scratch-space/cuda_solution.txt
+else
+    echo "⚠️  CUDA fix failed, attempting to continue..."
+fi
+
+# Apply MPI fix (same as in build-whisper.sh)
+echo "🔧 Removing MPI dependencies to avoid container runtime issues..."
+echo "Reason: Open MPI opal_shmem_base_select fails in Docker container environment"
+
+# Uninstall mpi4py and OpenMPI packages that cause the initialization failure
+uv pip uninstall --system -y mpi4py 2>/dev/null || true
+apt-get remove -y openmpi-bin libopenmpi3 libopenmpi-dev 2>/dev/null || true
+
+echo "✅ MPI dependencies removed - proceeding with single-process TensorRT build..."
 python3 ./convert_checkpoint.py --model_type $MODEL_TYPE \
                     --model_dir $phi_path \
                     --output_dir ./phi-checkpoint \

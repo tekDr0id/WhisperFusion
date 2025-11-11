@@ -5,6 +5,30 @@
 cd /root/TensorRT-LLM-examples/phi
 
 ## Build TensorRT for [Dolphin Phi Finetuned](https://huggingface.co/cognitivecomputations/dolphin-2_6-phi-2) ChatML format with `fp16`
+
+# Apply CUDA fix (same as in build-whisper.sh, build-phi.sh, and build-mistral.sh)
+echo "🔍 Applying CUDA fix for cudart import..."
+echo "Installing cuda-python==12.4.0..."
+uv pip install --system --force-reinstall "cuda-python==12.4.0" > /dev/null 2>&1
+
+# Test CUDA import
+if python3 -c "from cuda import cudart; print('✓ cudart import successful')" 2>/dev/null; then
+    echo "✅ CUDA fix applied successfully!"
+    echo "CUDA_FIX_APPLIED: cuda-python==12.4.0 in build-dolphin.sh" >> /root/scratch-space/cuda_solution.txt
+else
+    echo "⚠️  CUDA fix failed, attempting to continue..."
+fi
+
+# Apply MPI fix (same as in build-whisper.sh, build-phi.sh, and build-mistral.sh)
+echo "🔧 Removing MPI dependencies to avoid container runtime issues..."
+echo "Reason: Open MPI opal_shmem_base_select fails in Docker container environment"
+
+# Uninstall mpi4py and OpenMPI packages that cause the initialization failure
+uv pip uninstall --system -y mpi4py 2>/dev/null || true
+apt-get remove -y openmpi-bin libopenmpi3 libopenmpi-dev 2>/dev/null || true
+
+echo "✅ MPI dependencies removed - proceeding with single-process TensorRT build..."
+
 echo "Download Phi2 Huggingface models..."
 
 git lfs install

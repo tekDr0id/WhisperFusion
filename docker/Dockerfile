@@ -1,6 +1,6 @@
-# Use official TensorRT-LLM container as base
-ARG BASE_IMAGE=nvcr.io/nvidia/tensorrt-llm
-ARG BASE_TAG=0.10.0-trtllm-devel
+# Use PyTorch base with CUDA 12.4 that matches TensorRT-LLM 0.10.0 requirements
+ARG BASE_IMAGE=nvcr.io/nvidia/pytorch
+ARG BASE_TAG=24.03-py3
 
 FROM ${BASE_IMAGE}:${BASE_TAG} as base
 ARG CUDA_ARCH
@@ -20,16 +20,14 @@ ENV PATH="/root/.local/bin:$PATH"
 
 FROM base AS devel
 WORKDIR /root/
-# TensorRT-LLM and CUDA are already properly configured in the NGC container
-# Just install additional required packages for WhisperFusion
-RUN /root/.local/bin/uv pip install --system "nvidia-ml-py>=12.535.0,<13"
+# Install TensorRT-LLM 0.10.0 and required packages using the same base as NGC containers
+RUN /root/.local/bin/uv pip install --system "nvidia-ml-py>=12.535.0,<13" && \
+    /root/.local/bin/uv pip install --system -U tensorrt_llm==0.10.0 --extra-index-url https://pypi.nvidia.com
 
-# Clone TensorRT-LLM examples (they should already exist, but ensure we have v0.10.0)
-RUN if [ ! -d "/root/TensorRT-LLM-examples" ]; then \
-        git clone -b v0.10.0 --depth 1 https://github.com/NVIDIA/TensorRT-LLM.git && \
-        mv TensorRT-LLM/examples ./TensorRT-LLM-examples && \
-        rm -rf TensorRT-LLM; \
-    fi
+# Clone TensorRT-LLM examples
+RUN git clone -b v0.10.0 --depth 1 https://github.com/NVIDIA/TensorRT-LLM.git && \
+    mv TensorRT-LLM/examples ./TensorRT-LLM-examples && \
+    rm -rf TensorRT-LLM
 
 FROM devel AS release
 WORKDIR /root/

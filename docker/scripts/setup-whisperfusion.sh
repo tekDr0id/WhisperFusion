@@ -76,6 +76,10 @@ curl -L -o /root/.cache/whisper-live/silero_vad.onnx https://github.com/snakers4
 echo "Organizing cached files..."
 python3 -c 'from transformers.utils.hub import move_cache; move_cache()'
 
+# Install webdataset for WhisperSpeech runtime (after TensorRT builds complete)
+echo "Installing webdataset for WhisperSpeech runtime..."
+uv pip install --system webdataset
+
 echo "✅ WhisperFusion setup completed successfully!"
 echo ""
 echo "Installed package versions:"
