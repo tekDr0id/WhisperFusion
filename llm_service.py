@@ -328,7 +328,7 @@ class TensorRTLLMEngine:
             # if self.eos:
             if output is not None:
                 if self.phi_model_type == "phi-2":
-                    output[0] = output.split("Instruct:")[0]
+                    output[0] = output[0].split("Instruct:")[0]
 
                 self.last_output = output
                 self.last_prompt = prompt

@@ -53,20 +53,14 @@ if __name__ == "__main__":
     args = parse_arguments()
     if not args.whisper_tensorrt_path:
         raise ValueError("Please provide whisper_tensorrt_path to run the pipeline.")
-        import sys
-        sys.exit(0)
     
     if args.mistral:
         if not args.mistral_tensorrt_path or not args.mistral_tokenizer_path:
             raise ValueError("Please provide mistral_tensorrt_path and mistral_tokenizer_path to run the pipeline.")
-            import sys
-            sys.exit(0)
 
     if args.phi:
         if not args.phi_tensorrt_path or not args.phi_tokenizer_path:
             raise ValueError("Please provide phi_tensorrt_path and phi_tokenizer_path to run the pipeline.")
-            import sys
-            sys.exit(0)
 
     multiprocessing.set_start_method('spawn')
     

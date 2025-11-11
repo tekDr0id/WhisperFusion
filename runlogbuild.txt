@@ -1,0 +1,44 @@
+#9 [ 4/11] RUN uv pip install --system --force-reinstall     "torch==2.2.2"     "torchaudio==2.2.2"     "torchvision==2.2.2"     --index-url https://download.pytorch.org/whl/cu121
+#9 1.629 Using Python 3.10.12 environment at: /usr
+#9 3.100   × No solution found when resolving dependencies:
+#9 3.100   ╰─▶ Because there is no version of torchvision==2.2.2 and you require
+#9 3.100       torchvision==2.2.2, we can conclude that your requirements are
+#9 3.100       unsatisfiable.
+#9 ERROR: process "/bin/sh -c uv pip install --system --force-reinstall     \"torch==${TORCH_VERSION}\"     \"torchaudio==${TORCH_VERSION}\"     \"torchvision==${TORCH_VERSION}\"     --index-url https://download.pytorch.org/whl/cu121" did not complete successfully: exit code: 1
+
+#5 [internal] load build context
+#5 transferring context: 13.35GB 2598.9s done
+#5 CANCELED
+------
+ > [ 4/11] RUN uv pip install --system --force-reinstall     "torch==2.2.2"     "torchaudio==2.2.2"     "torchvision==2.2.2"     --index-url https://download.pytorch.org/whl/cu121:
+1.629 Using Python 3.10.12 environment at: /usr
+3.100   × No solution found when resolving dependencies:
+3.100   ╰─▶ Because there is no version of torchvision==2.2.2 and you require
+3.100       torchvision==2.2.2, we can conclude that your requirements are
+3.100       unsatisfiable.
+------
+Dockerfile.fixed:21
+
+--------------------
+
+  20 |     # CRITICAL: Pin PyTorch to stable version for TensorRT-LLM 0.9.0
+
+  21 | >>> RUN uv pip install --system --force-reinstall \
+
+  22 | >>>     "torch==${TORCH_VERSION}" \
+
+  23 | >>>     "torchaudio==${TORCH_VERSION}" \
+
+  24 | >>>     "torchvision==${TORCH_VERSION}" \
+
+  25 | >>>     --index-url https://download.pytorch.org/whl/cu121
+
+  26 |
+
+--------------------
+
+failed to solve: process "/bin/sh -c uv pip install --system --force-reinstall     \"torch==${TORCH_VERSION}\"     \"torchaudio==${TORCH_VERSION}\"     \"torchvision==${TORCH_VERSION}\"     --index-url https://download.pytorch.org/whl/cu121" did not complete successfully: exit code: 1
+
+
+
+View build details: docker-desktop://dashboard/build/default/default/6sxyigcdc62qh6gz4ogi1mifg

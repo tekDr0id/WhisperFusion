@@ -12,7 +12,7 @@ else
 fi
 
 echo "Building Whisper TensorRT Engine..."
-pip install -r requirements.txt > /dev/null 2>&1
+uv pip install --system -r requirements.txt > /dev/null 2>&1
 
 python3 build.py --output_dir whisper_small_en --use_gpt_attention_plugin --use_gemm_plugin  --use_bert_attention_plugin --enable_context_fmha --model_name small.en
 

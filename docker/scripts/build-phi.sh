@@ -12,7 +12,7 @@ echo "Download $MODEL_TYPE Huggingface models..."
 phi_path=$(huggingface-cli download --repo-type model microsoft/$MODEL_TYPE)
 echo "Building  TensorRT Engine..."
 name=$1
-pip install -r requirements.txt
+uv pip install --system -r requirements.txt
 
 python3 ./convert_checkpoint.py --model_type $MODEL_TYPE \
                     --model_dir $phi_path \

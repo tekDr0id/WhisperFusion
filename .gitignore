@@ -1,0 +1,124 @@
+# WhisperFusion .gitignore
+
+# Model directories and files
+models/
+**/models/
+docker/scratch-space/models/
+/root/scratch-space/models/
+whisper_small_en/
+phi-*/
+mistral/
+Phi-*/
+
+# TensorRT engine files
+*.engine
+*.plan
+*.trt
+*.tensorrt
+
+# Model weights and checkpoints
+*.pt
+*.pth
+*.bin
+*.safetensors
+*.ckpt
+*.pkl
+
+# Cache directories
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.cache/
+
+# Docker and container files
+.dockerignore
+docker-compose.override.yml
+runlog*.txt
+BUILD_FIX_COMPLETE.md
+CODE_QUALITY_REVIEW.md
+CODE_REVIEW_SUMMARY.md
+CleanUp.md
+QUICK_START.md
+AI_LOG.md
+
+# Log files
+*.log
+logs/
+runlog*.txt
+
+# Virtual environments
+venv/
+env/
+.venv/
+.env/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# CUDA and GPU related
+*.cubin
+*.fatbin
+*.ptx
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+*.ipynb
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Backup files
+*.backup
+*.bak
+*.orig
+
+# HuggingFace cache
+.cache/huggingface/
+huggingface_hub/
+transformers_cache/
+
+# Model download directories
+downloads/
+data/
+
+# TensorRT-LLM specific
+TensorRT-LLM/
+TensorRT-LLM-examples/
+scratch-space/
+cuda_solution.txt
+
+# PyTorch JIT cache
+.pytorch_jit_cache/
+
+# NVIDIA container toolkit
+.nvidia-container-runtime/
