@@ -69,22 +69,46 @@ uv pip uninstall --system -y mpi4py 2>/dev/null || true
 apt-get remove -y openmpi-bin libopenmpi3 libopenmpi-dev 2>/dev/null || true
 
 echo "✅ MPI dependencies removed - proceeding with single-process TensorRT build..."
-python3 ./convert_checkpoint.py --model_type $MODEL_TYPE \
-                    --model_dir $phi_path \
-                    --output_dir ./phi-checkpoint \
-                    --dtype float16
+# Check if FP32 build is forced to avoid DynamicDecodeLayer segfaults
+if [ "$FORCE_FP32_BUILD" = "1" ]; then
+    echo "⚠️  FORCE_FP32_BUILD detected - building Phi with FP32 precision to avoid segfaults"
+    
+    python3 ./convert_checkpoint.py --model_type $MODEL_TYPE \
+                        --model_dir $phi_path \
+                        --output_dir ./phi-checkpoint \
+                        --dtype float32
 
-trtllm-build \
-    --checkpoint_dir ./phi-checkpoint \
-    --output_dir $name \
-    --gpt_attention_plugin float16 \
-    --context_fmha enable \
-    --gemm_plugin float16 \
-    --max_batch_size 1 \
-    --max_input_len 1024 \
-    --max_output_len 1024 \
-    --tp_size 1 \
-    --pp_size 1
+    trtllm-build \
+        --checkpoint_dir ./phi-checkpoint \
+        --output_dir $name \
+        --gpt_attention_plugin float32 \
+        --context_fmha enable \
+        --gemm_plugin float32 \
+        --max_batch_size 1 \
+        --max_input_len 1024 \
+        --max_output_len 1024 \
+        --tp_size 1 \
+        --pp_size 1
+else
+    echo "Building Phi with default precision (FP16)"
+    
+    python3 ./convert_checkpoint.py --model_type $MODEL_TYPE \
+                        --model_dir $phi_path \
+                        --output_dir ./phi-checkpoint \
+                        --dtype float16
+
+    trtllm-build \
+        --checkpoint_dir ./phi-checkpoint \
+        --output_dir $name \
+        --gpt_attention_plugin float16 \
+        --context_fmha enable \
+        --gemm_plugin float16 \
+        --max_batch_size 1 \
+        --max_input_len 1024 \
+        --max_output_len 1024 \
+        --tp_size 1 \
+        --pp_size 1
+fi
 
 dest=/root/scratch-space/models
 if [ -d "$dest/$name" ]; then

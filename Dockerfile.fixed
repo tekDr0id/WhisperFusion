@@ -1,0 +1,100 @@
+# Fixed Dockerfile for RTX 3090 + TensorRT-LLM stability
+FROM nvcr.io/nvidia/pytorch:24.03-py3
+
+# Install system dependencies first
+RUN apt-get update && apt-get install -y \
+    git curl wget build-essential cmake \
+    ffmpeg portaudio19-dev pkg-config \
+    libavformat-dev libavcodec-dev libavdevice-dev \
+    libavutil-dev libavfilter-dev libswscale-dev libswresample-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install UV package manager
+RUN pip install uv
+
+# CRITICAL: Use the pre-installed PyTorch from NGC base image (compatible)
+# The nvidia/pytorch:24.03-py3 image already has PyTorch 2.2.x + CUDA 12.4
+# Don't reinstall PyTorch - this can cause ABI mismatches with TensorRT-LLM
+
+# Verify existing PyTorch installation
+RUN python3 -c "import torch; print(f'Pre-installed PyTorch: {torch.__version__}'); print(f'CUDA: {torch.version.cuda}')"
+
+# CRITICAL FIX: Install stable CUDA packages for RTX 3090
+RUN uv pip install --system \
+    "cuda-python==12.4.0" \
+    "nvidia-ml-py>=12.535.0,<13"
+
+# CRITICAL: Use TensorRT-LLM 0.10.0 but with RTX 3090 patches
+# We'll patch it at runtime instead of downgrading
+RUN python3 -c "
+try:
+    import tensorrt_llm
+    print(f'TensorRT-LLM already installed: {tensorrt_llm.__version__}')
+except ImportError:
+    print('TensorRT-LLM not found in base image')
+"
+
+# CRITICAL: Remove problematic packages that cause segfaults
+RUN uv pip uninstall --system -y pynvml mpi4py 2>/dev/null || true
+
+# Remove OpenMPI entirely (causes container issues)
+RUN apt-get update && apt-get remove -y openmpi-bin libopenmpi3 libopenmpi-dev 2>/dev/null || true \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install WhisperFusion dependencies
+WORKDIR /root
+COPY requirements.txt /root/requirements.txt 2>/dev/null || echo "# No requirements.txt" > /root/requirements.txt
+
+# Install core dependencies without conflicting with pre-installed packages
+RUN uv pip install --system \
+    webdataset \
+    faster-whisper \
+    whisperspeech \
+    websockets \
+    numpy \
+    scipy \
+    librosa \
+    soundfile \
+    av
+
+# Set environment variables for RTX 3090 stability
+ENV CUDA_LAUNCH_BLOCKING=1
+ENV CUDA_CACHE_DISABLE=1
+ENV PYTORCH_CUDA_ALLOC_CONF="max_split_size_mb:512,garbage_collection_threshold:0.8,expandable_segments:True"
+ENV TENSORRT_MAX_WORKSPACE_SIZE=1073741824
+ENV CUDA_MEMORY_FRACTION=0.85
+
+# RTX 3090 specific optimizations
+ENV TORCH_CUDA_ARCH_LIST="8.6"
+ENV CUDA_ARCHITECTURES="86"
+ENV NVIDIA_TF32_OVERRIDE=0
+ENV CUDA_AUTO_BOOST=0
+ENV __GL_THREADED_OPTIMIZATIONS=0
+
+# Copy application files
+COPY . /root/
+
+# Make scripts executable
+RUN chmod +x /root/docker/scratch-space/*.sh
+
+# Copy fixed scripts
+COPY docker/scratch-space/run-whisperfusion-fixed.sh /root/docker/scratch-space/
+COPY docker/scratch-space/build-models-rtx3090.sh /root/docker/scratch-space/
+COPY patch_dynamic_decode.py /root/
+
+RUN chmod +x /root/docker/scratch-space/run-whisperfusion-fixed.sh
+RUN chmod +x /root/docker/scratch-space/build-models-rtx3090.sh
+
+# Create TensorRT-LLM examples directory structure
+RUN mkdir -p /root/TensorRT-LLM-examples
+RUN git clone https://github.com/NVIDIA/TensorRT-LLM.git /root/TensorRT-LLM-temp || true
+RUN if [ -d "/root/TensorRT-LLM-temp/examples" ]; then \
+        cp -r /root/TensorRT-LLM-temp/examples/* /root/TensorRT-LLM-examples/ 2>/dev/null || true; \
+        rm -rf /root/TensorRT-LLM-temp; \
+    fi
+
+# Ensure scratch-space directory exists
+RUN mkdir -p /root/scratch-space
+
+# Default entrypoint
+ENTRYPOINT ["/root/docker/scratch-space/run-whisperfusion-fixed.sh"]

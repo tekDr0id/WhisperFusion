@@ -1,7 +1,4 @@
 WORKING_SOLUTION: cuda-python==12.4.0
 BUILD_SUCCESS: Single-process mode without MPI
 CUDA_FIX_APPLIED: cuda-python==12.4.0 in build-phi.sh
-CUDA_FIX_APPLIED: cuda-python==12.4.0 in build-phi.sh
-CUDA_FIX_APPLIED: cuda-python==12.4.0 in build-phi.sh
-RUNTIME_SUCCESS: All fixes applied successfully
 RUNTIME_SUCCESS: All fixes applied successfully

@@ -1,0 +1,7 @@
+[wsl2]
+memory=32GB
+processors=10
+swap=8GB
+localhostForwarding=true
+pageReporting=true
+nestedVirtualization=true

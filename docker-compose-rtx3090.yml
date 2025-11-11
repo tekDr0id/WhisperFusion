@@ -1,0 +1,66 @@
+services:
+  whisperfusion:
+    build:
+      context: .
+      dockerfile: Dockerfile.fixed
+    image: whisperfusion:rtx3090-fixed
+    volumes:
+      - type: bind
+        source: ./docker/scratch-space
+        target: /root/scratch-space
+      - type: bind
+        source: ./
+        target: /root/WhisperFusion
+    environment:
+      VERBOSE: ${VERBOSE:-false}
+      MODEL: ${MODEL:-phi-2}
+      
+      # RTX 3090 specific settings
+      TORCH_CUDA_ARCH_LIST: "8.6"
+      CUDA_ARCHITECTURES: "86"
+      PYTORCH_CUDA_ALLOC_CONF: "max_split_size_mb:256,garbage_collection_threshold:0.8,expandable_segments:True"
+      CUDA_MEMORY_FRACTION: "0.85"
+      CUDA_LAUNCH_BLOCKING: "1"
+      
+      # Disable problematic optimizations
+      NVIDIA_TF32_OVERRIDE: "0"
+      CUDA_AUTO_BOOST: "0"
+      __GL_THREADED_OPTIMIZATIONS: "0"
+      
+      # TensorRT stability
+      TENSORRT_MAX_WORKSPACE_SIZE: "536870912"
+      TRT_MAX_WORKSPACE_SIZE: "536870912"
+      CUDA_MODULE_LOADING: "LAZY"
+      
+      # Fallback options
+      WF_DISABLE_TRT: ${WF_DISABLE_TRT:-0}
+      WF_SAFE_MODE: ${WF_SAFE_MODE:-0}
+      
+    ports:
+      - "8888:8888"
+      - "6006:6006"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: ["gpu"]
+    entrypoint: ["/root/scratch-space/run-whisperfusion-fixed.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8888 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s  # Allow time for model building
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./docker/resources/docker/default:/etc/nginx/conf.d/default.conf:ro
+      - ./examples/chatbot/html:/var/www/html:ro
+      - ./docker/scripts/start-nginx.sh:/start-nginx.sh:ro
+    ports:
+      - "8000:80"
+    depends_on:
+      whisperfusion:
+        condition: service_healthy
+    entrypoint: ["/bin/bash", "/start-nginx.sh"]

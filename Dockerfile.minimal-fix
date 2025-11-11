@@ -1,0 +1,43 @@
+# Minimal fix for RTX 3090 DynamicDecodeLayer segfault
+# Uses existing setup with targeted patches
+FROM nvcr.io/nvidia/pytorch:24.03-py3
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    git curl wget build-essential cmake \
+    ffmpeg portaudio19-dev pkg-config \
+    libavformat-dev libavcodec-dev libavdevice-dev \
+    libavutil-dev libavfilter-dev libswscale-dev libswresample-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install UV package manager
+RUN pip install uv
+
+# MINIMAL FIX: Just install the essential patches without version changes
+RUN uv pip install --system "cuda-python==12.4.0" "nvidia-ml-py>=12.535.0,<13"
+
+# Remove problematic MPI packages
+RUN uv pip uninstall --system -y pynvml mpi4py 2>/dev/null || true
+RUN apt-get update && apt-get remove -y openmpi-bin libopenmpi3 libopenmpi-dev 2>/dev/null || true \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set conservative RTX 3090 environment
+ENV CUDA_LAUNCH_BLOCKING=1
+ENV PYTORCH_CUDA_ALLOC_CONF="max_split_size_mb:256,garbage_collection_threshold:0.8"
+ENV CUDA_MEMORY_FRACTION=0.8
+ENV NVIDIA_TF32_OVERRIDE=0
+
+# Set working directory
+WORKDIR /root
+
+# Copy entire project
+COPY . /root/
+
+# Install WhisperFusion requirements using existing setup
+RUN cd /root && ./docker/scripts/setup-whisperfusion.sh
+
+# Make scripts executable
+RUN chmod +x /root/docker/scratch-space/*.sh
+
+# Use the original entrypoint but with safety fallbacks
+ENTRYPOINT ["/root/docker/scratch-space/run-whisperfusion-safe.sh"]

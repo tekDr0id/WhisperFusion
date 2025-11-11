@@ -1,0 +1,51 @@
+services:
+  whisperfusion:
+    build:
+      context: .
+      dockerfile: Dockerfile.minimal-fix
+    image: whisperfusion:minimal-fix
+    volumes:
+      - type: bind
+        source: ./docker/scratch-space
+        target: /root/scratch-space
+    environment:
+      VERBOSE: ${VERBOSE:-false}
+      MODEL: ${MODEL:-phi-2}
+      
+      # RTX 3090 safety environment
+      CUDA_LAUNCH_BLOCKING: "1"
+      PYTORCH_CUDA_ALLOC_CONF: "max_split_size_mb:256,garbage_collection_threshold:0.8"
+      CUDA_MEMORY_FRACTION: "0.8"
+      NVIDIA_TF32_OVERRIDE: "0"
+      
+      # Safety fallback options
+      WF_DISABLE_TRT: ${WF_DISABLE_TRT:-0}
+      WF_SAFE_MODE: ${WF_SAFE_MODE:-0}
+      
+    ports:
+      - "8888:8888"
+      - "6006:6006"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: ["gpu"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8888 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./docker/resources/docker/default:/etc/nginx/conf.d/default.conf:ro
+      - ./examples/chatbot/html:/var/www/html:ro
+      - ./docker/scripts/start-nginx.sh:/start-nginx.sh:ro
+    ports:
+      - "8000:80"
+    depends_on:
+      whisperfusion:
+        condition: service_started  # Remove health check dependency for now
+    entrypoint: ["/bin/bash", "/start-nginx.sh"]

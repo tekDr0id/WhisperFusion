@@ -156,7 +156,16 @@ echo "✅ MPI dependencies removed - proceeding with single-process TensorRT bui
 
 # Simple single-process TensorRT build (MPI removed)
 echo "🚀 Starting TensorRT Whisper build (single-process mode)..."
-python3 build.py --output_dir whisper_small_en --use_gpt_attention_plugin --use_gemm_plugin --use_bert_attention_plugin --enable_context_fmha --model_name small.en
+
+# Check if FP32 build is forced to avoid DynamicDecodeLayer segfaults
+if [ "$FORCE_FP32_BUILD" = "1" ]; then
+    echo "⚠️  FORCE_FP32_BUILD detected - building Whisper with FP32 plugins (Whisper only supports float16 dtype)"
+    # Use FP32 plugins but float16 dtype (Whisper limitation)
+    python3 build.py --output_dir whisper_small_en --use_gpt_attention_plugin float32 --use_gemm_plugin float32 --use_bert_attention_plugin float32 --enable_context_fmha --model_name small.en --dtype float16
+else
+    echo "Building with default precision (FP16)"
+    python3 build.py --output_dir whisper_small_en --use_gpt_attention_plugin --use_gemm_plugin --use_bert_attention_plugin --enable_context_fmha --model_name small.en
+fi
 
 if [ $? -eq 0 ]; then
     echo "✅ TensorRT Whisper build completed successfully!"

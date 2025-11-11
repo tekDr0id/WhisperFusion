@@ -1,19 +1,13 @@
-Warming up:  33%|███▎      | 1/3 [02:38<05:17, 158.88s/it]/usr/local/lib/python3.10/dist-packages/torch/backends/cuda/__init__.py:342: FutureWarning: torch.backends.cuda.sdp_kernel() is deprecated. In the future, this context manager will be removed. Please see, torch.nn.attention.sdpa_kernel() for the new context manager, with updated signature.
-whisperfusion-1  |   warnings.warn(
-Warming up: 100%|██████████| 3/3 [02:41<00:00, 53.76s/it]
 whisperfusion-1  | INFO:root:[WhisperSpeech INFO:] Warmed up Whisper Speech torch compile model. Connect to the WebGUI now.
-whisperfusion-1  | INFO:websockets.server:connection open
-whisperfusion-1  | INFO:websockets.server:connection open
-whisperfusion-1  | INFO:root:[Whisper INFO:] New client connected
-whisperfusion-1  | [25325216b0e4:401  :0:1911] Caught signal 11 (Segmentation fault: address not mapped to object at address 0x18)
-whisperfusion-1  | ==== backtrace (tid:   1911) ====
+whisperfusion-1  | [9a2814a17358:2020 :0:2020] Caught signal 11 (Segmentation fault: address not mapped to object at address 0x18)
+whisperfusion-1  | ==== backtrace (tid:   2020) ====
 whisperfusion-1  |  0 0x0000000000042520 __sigaction()  ???:0
 whisperfusion-1  |  1 0x0000000000072d58 tensorrt_llm::thop::TorchAllocator::malloc()  ???:0
-whisperfusion-1  |  2 0x0000000002090434 tensorrt_llm::layers::DynamicDecodeLayer<__half>::allocateBuffer()  ???:0
-whisperfusion-1  |  3 0x0000000002094108 tensorrt_llm::layers::DynamicDecodeLayer<__half>::initialize()  ???:0
-whisperfusion-1  |  4 0x0000000002094311 tensorrt_llm::layers::DynamicDecodeLayer<__half>::DynamicDecodeLayer()  ???:0
-whisperfusion-1  |  5 0x0000000000052c70 torch_ext::FtDynamicDecode<__half>::FtDynamicDecode()  ???:0
-whisperfusion-1  |  6 0x00000000000360ca torch_ext::DynamicDecodeOp::createInstance()  ???:0
+whisperfusion-1  |  2 0x00000000020902c4 tensorrt_llm::layers::DynamicDecodeLayer<float>::allocateBuffer()  ???:0
+whisperfusion-1  |  3 0x0000000002093258 tensorrt_llm::layers::DynamicDecodeLayer<float>::initialize()  ???:0
+whisperfusion-1  |  4 0x0000000002093461 tensorrt_llm::layers::DynamicDecodeLayer<float>::DynamicDecodeLayer()  ???:0
+whisperfusion-1  |  5 0x00000000000528a0 torch_ext::FtDynamicDecode<float>::FtDynamicDecode()  ???:0
+whisperfusion-1  |  6 0x000000000003614f torch_ext::DynamicDecodeOp::createInstance()  ???:0
 whisperfusion-1  |  7 0x0000000000036214 torch_ext::DynamicDecodeOp::DynamicDecodeOp()  ???:0
 whisperfusion-1  |  8 0x0000000000053058 std::_Function_handler<void (std::vector<c10::IValue, std::allocator<c10::IValue> >&), torch::class_<torch_ext::DynamicDecodeOp>::defineMethod<torch::class_<torch_ext::DynamicDecodeOp>::def<long, long, long, long, long, long, c10::ScalarType>(torch::detail::types<void, long, long, long, long, long, long, c10::ScalarType>, std::string, std::initializer_list<torch::arg>)::{lambda(c10::tagged_capsule<torch_ext::DynamicDecodeOp>, long, long, long, long, long, long, c10::ScalarType)#1}>(std::string, torch::class_<torch_ext::DynamicDecodeOp>::def<long, long, long, long, long, long, c10::ScalarType>(torch::detail::types<void, long, long, long, long, long, long, c10::ScalarType>, std::string, std::initializer_list<torch::arg>)::{lambda(c10::tagged_capsule<torch_ext::DynamicDecodeOp>, long, long, long, long, long, long, c10::ScalarType)#1}, std::string, std::initializer_list<torch::arg>)::{lambda(std::vector<c10::IValue, std::allocator<c10::IValue> >&)#1}>::_M_invoke()  ???:0
 whisperfusion-1  |  9 0x0000000000a0f48e torch::jit::runAndInsertCall()  :0
@@ -31,67 +25,67 @@ whisperfusion-1  | 20 0x000000000014fcbd _PyObject_FastCallDictTstate()  ???:0
 whisperfusion-1  | 21 0x0000000000164a64 _PyStack_AsDict()  ???:0
 whisperfusion-1  | 22 0x0000000000150a1c _PyObject_MakeTpCall()  ???:0
 whisperfusion-1  | 23 0x000000000014a150 _PyEval_EvalFrameDefault()  ???:0
-whisperfusion-1  | 24 0x000000000015a9fc _PyFunction_Vectorcall()  ???:0
-whisperfusion-1  | 25 0x000000000014345c _PyEval_EvalFrameDefault()  ???:0
-whisperfusion-1  | 26 0x000000000015a9fc _PyFunction_Vectorcall()  ???:0
-whisperfusion-1  | 27 0x000000000014fcbd _PyObject_FastCallDictTstate()  ???:0
-whisperfusion-1  | 28 0x0000000000164a64 _PyStack_AsDict()  ???:0
-whisperfusion-1  | 29 0x0000000000150a1c _PyObject_MakeTpCall()  ???:0
-whisperfusion-1  | 30 0x000000000014a150 _PyEval_EvalFrameDefault()  ???:0
-whisperfusion-1  | 31 0x000000000015a9fc _PyFunction_Vectorcall()  ???:0
-whisperfusion-1  | 32 0x000000000014fcbd _PyObject_FastCallDictTstate()  ???:0
-whisperfusion-1  | 33 0x0000000000164a64 _PyStack_AsDict()  ???:0
-whisperfusion-1  | 34 0x0000000000150a1c _PyObject_MakeTpCall()  ???:0
-whisperfusion-1  | 35 0x000000000014a150 _PyEval_EvalFrameDefault()  ???:0
-whisperfusion-1  | 36 0x00000000001687f1 PyMethod_New()  ???:0
-whisperfusion-1  | 37 0x0000000000169492 PyObject_Call()  ???:0
-whisperfusion-1  | 38 0x000000000027708c PyInit_gc()  ???:0
-whisperfusion-1  | 39 0x0000000000150a7b _PyObject_MakeTpCall()  ???:0
-whisperfusion-1  | 40 0x000000000014326d _PyEval_EvalFrameDefault()  ???:0
-whisperfusion-1  | 41 0x000000000015a9fc _PyFunction_Vectorcall()  ???:0
-whisperfusion-1  | 42 0x00000000001455d7 _PyEval_EvalFrameDefault()  ???:0
-whisperfusion-1  | 43 0x000000000015a9fc _PyFunction_Vectorcall()  ???:0
-whisperfusion-1  | 44 0x000000000014345c _PyEval_EvalFrameDefault()  ???:0
-whisperfusion-1  | 45 0x000000000015a9fc _PyFunction_Vectorcall()  ???:0
-whisperfusion-1  | 46 0x000000000014345c _PyEval_EvalFrameDefault()  ???:0
-whisperfusion-1  | 47 0x0000000000168a51 PyMethod_New()  ???:0
-whisperfusion-1  | 48 0x0000000000291f3a _PyDict_SetItem_KnownHash()  ???:0
-whisperfusion-1  | 49 0x0000000000286ef8 _PyObject_RealIsInstance()  ???:0
-whisperfusion-1  | 50 0x0000000000094ac3 pthread_condattr_setpshared()  ???:0
-whisperfusion-1  | 51 0x0000000000125a04 clone()  ???:0
+whisperfusion-1  | 24 0x00000000001687f1 PyMethod_New()  ???:0
+whisperfusion-1  | 25 0x0000000000148cfa _PyEval_EvalFrameDefault()  ???:0
+whisperfusion-1  | 26 0x00000000001687f1 PyMethod_New()  ???:0
+whisperfusion-1  | 27 0x0000000000169492 PyObject_Call()  ???:0
+whisperfusion-1  | 28 0x00000000001455d7 _PyEval_EvalFrameDefault()  ???:0
+whisperfusion-1  | 29 0x000000000015a9fc _PyFunction_Vectorcall()  ???:0
+whisperfusion-1  | 30 0x000000000014345c _PyEval_EvalFrameDefault()  ???:0
+whisperfusion-1  | 31 0x000000000016893e PyMethod_New()  ???:0
+whisperfusion-1  | 32 0x00000000001455d7 _PyEval_EvalFrameDefault()  ???:0
+whisperfusion-1  | 33 0x000000000015a9fc _PyFunction_Vectorcall()  ???:0
+whisperfusion-1  | 34 0x000000000014345c _PyEval_EvalFrameDefault()  ???:0
+whisperfusion-1  | 35 0x000000000015a9fc _PyFunction_Vectorcall()  ???:0
+whisperfusion-1  | 36 0x000000000014345c _PyEval_EvalFrameDefault()  ???:0
+whisperfusion-1  | 37 0x000000000015a9fc _PyFunction_Vectorcall()  ???:0
+whisperfusion-1  | 38 0x000000000014326d _PyEval_EvalFrameDefault()  ???:0
+whisperfusion-1  | 39 0x000000000015a9fc _PyFunction_Vectorcall()  ???:0
+whisperfusion-1  | 40 0x000000000014453c _PyEval_EvalFrameDefault()  ???:0
+whisperfusion-1  | 41 0x000000000013f9c6 _PyArg_ParseTuple_SizeT()  ???:0
+whisperfusion-1  | 42 0x0000000000235256 PyEval_EvalCode()  ???:0
+whisperfusion-1  | 43 0x0000000000260108 PyUnicode_Tailmatch()  ???:0
+whisperfusion-1  | 44 0x00000000002599cb PyInit__collections()  ???:0
+whisperfusion-1  | 45 0x0000000000252ab1 PyRun_StringFlags()  ???:0
+whisperfusion-1  | 46 0x0000000000252961 PyRun_SimpleStringFlags()  ???:0
+whisperfusion-1  | 47 0x0000000000251b15 Py_RunMain()  ???:0
+whisperfusion-1  | 48 0x000000000022802d Py_BytesMain()  ???:0
+whisperfusion-1  | 49 0x0000000000029d90 __libc_init_first()  ???:0
+whisperfusion-1  | 50 0x0000000000029e40 __libc_start_main()  ???:0
+whisperfusion-1  | 51 0x0000000000227f25 _start()  ???:0
 whisperfusion-1  | =================================
-whisperfusion-1  | [25325216b0e4:00401] *** Process received signal ***
-whisperfusion-1  | [25325216b0e4:00401] Signal: Segmentation fault (11)
-whisperfusion-1  | [25325216b0e4:00401] Signal code:  (-6)
-whisperfusion-1  | [25325216b0e4:00401] Failing at address: 0x191
-whisperfusion-1  | [25325216b0e4:00401] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7fcb3c07d520]
-whisperfusion-1  | [25325216b0e4:00401] [ 1] /usr/local/lib/python3.10/dist-packages/tensorrt_llm/libs/libth_common.so(_ZN12tensorrt_llm4thop14TorchAllocator6mallocEmb+0x88)[0x7fca824eed58]
-whisperfusion-1  | [25325216b0e4:00401] [ 2] /usr/local/lib/python3.10/dist-packages/tensorrt_llm/libs/libtensorrt_llm.so(_ZN12tensorrt_llm6layers18DynamicDecodeLayerI6__halfE14allocateBufferEv+0xd4)[0x7fc883f56434]
-whisperfusion-1  | [25325216b0e4:00401] [ 3] /usr/local/lib/python3.10/dist-packages/tensorrt_llm/libs/libtensorrt_llm.so(_ZN12tensorrt_llm6layers18DynamicDecodeLayerI6__halfE10initializeEv+0x128)[0x7fc883f5a108]
-whisperfusion-1  | [25325216b0e4:00401] [ 4] /usr/local/lib/python3.10/dist-packages/tensorrt_llm/libs/libtensorrt_llm.so(_ZN12tensorrt_llm6layers18DynamicDecodeLayerI6__halfEC2ERKNS_7runtime12DecodingModeERKNS0_13DecoderDomainEP11CUstream_stSt10shared_ptrINS_6common10IAllocatorEE+0xb1)[0x7fc883f5a311]
-whisperfusion-1  | [25325216b0e4:00401] [ 5] /usr/local/lib/python3.10/dist-packages/tensorrt_llm/libs/libth_common.so(_ZN9torch_ext15FtDynamicDecodeI6__halfEC1Emmmmii+0x270)[0x7fca824cec70]
-whisperfusion-1  | [25325216b0e4:00401] [ 6] /usr/local/lib/python3.10/dist-packages/tensorrt_llm/libs/libth_common.so(_ZN9torch_ext15DynamicDecodeOp14createInstanceEv+0x8a)[0x7fca824b20ca]
-whisperfusion-1  | [25325216b0e4:00401] [ 7] /usr/local/lib/python3.10/dist-packages/tensorrt_llm/libs/libth_common.so(_ZN9torch_ext15DynamicDecodeOpC1EllllllN3c1010ScalarTypeE+0x84)[0x7fca824b2214]
-whisperfusion-1  | [25325216b0e4:00401] [ 8] /usr/local/lib/python3.10/dist-packages/tensorrt_llm/libs/libth_common.so(_ZNSt17_Function_handlerIFvRSt6vectorIN3c106IValueESaIS2_EEEZN5torch6class_IN9torch_ext15DynamicDecodeOpEE12defineMethodIZNSB_3defIJllllllNS1_10ScalarTypeEEEERSB_NS7_6detail5typesIvJDpT_EEESsSt16initializer_listINS7_3argEEEUlNS1_14tagged_capsuleISA_EEllllllSE_E_EEPNS7_3jit8FunctionESsT_SsSN_EUlS5_E_E9_M_invokeERKSt9_Any_dataS5_+0xf8)[0x7fca824cf058]
-whisperfusion-1  | [25325216b0e4:00401] [ 9] /usr/local/lib/python3.10/dist-packages/torch/lib/libtorch_python.so(+0xa0f48e)[0x7fcb398de48e]
-whisperfusion-1  | [25325216b0e4:00401] [10] /usr/local/lib/python3.10/dist-packages/torch/lib/libtorch_python.so(+0xa0ca1f)[0x7fcb398dba1f]
-whisperfusion-1  | [25325216b0e4:00401] [11] /usr/local/lib/python3.10/dist-packages/torch/lib/libtorch_python.so(+0xa0ea69)[0x7fcb398dda69]
-whisperfusion-1  | [25325216b0e4:00401] [12] /usr/local/lib/python3.10/dist-packages/torch/lib/libtorch_python.so(+0x47def4)[0x7fcb3934cef4]
-whisperfusion-1  | [25325216b0e4:00401] [13] /usr/bin/python3(+0x15a10e)[0x563c9740010e]
-whisperfusion-1  | [25325216b0e4:00401] [14] /usr/bin/python3(_PyObject_MakeTpCall+0x25b)[0x563c973f6a7b]
-whisperfusion-1  | [25325216b0e4:00401] [15] /usr/bin/python3(+0x168c20)[0x563c9740ec20]
-whisperfusion-1  | [25325216b0e4:00401] [16] /usr/bin/python3(+0x28072b)[0x563c9752672b]
-whisperfusion-1  | [25325216b0e4:00401] [17] /usr/bin/python3(_PyObject_MakeTpCall+0x25b)[0x563c973f6a7b]
-whisperfusion-1  | [25325216b0e4:00401] [18] /usr/bin/python3(_PyEval_EvalFrameDefault+0x6a79)[0x563c973ef629]
-whisperfusion-1  | [25325216b0e4:00401] [19] /usr/bin/python3(_PyFunction_Vectorcall+0x7c)[0x563c974009fc]
-whisperfusion-1  | [25325216b0e4:00401] [20] /usr/bin/python3(_PyObject_FastCallDictTstate+0x16d)[0x563c973f5cbd]
-whisperfusion-1  | [25325216b0e4:00401] [21] /usr/bin/python3(+0x164a64)[0x563c9740aa64]
-whisperfusion-1  | [25325216b0e4:00401] [22] /usr/bin/python3(_PyObject_MakeTpCall+0x1fc)[0x563c973f6a1c]
-whisperfusion-1  | [25325216b0e4:00401] [23] /usr/bin/python3(_PyEval_EvalFrameDefault+0x75a0)[0x563c973f0150]
-whisperfusion-1  | [25325216b0e4:00401] [24] /usr/bin/python3(_PyFunction_Vectorcall+0x7c)[0x563c974009fc]
-whisperfusion-1  | [25325216b0e4:00401] [25] /usr/bin/python3(_PyEval_EvalFrameDefault+0x8ac)[0x563c973e945c]
-whisperfusion-1  | [25325216b0e4:00401] [26] /usr/bin/python3(_PyFunction_Vectorcall+0x7c)[0x563c974009fc]
-whisperfusion-1  | [25325216b0e4:00401] [27] /usr/bin/python3(_PyObject_FastCallDictTstate+0x16d)[0x563c973f5cbd]
-whisperfusion-1  | [25325216b0e4:00401] [28] /usr/bin/python3(+0x164a64)[0x563c9740aa64]
-whisperfusion-1  | [25325216b0e4:00401] [29] /usr/bin/python3(_PyObject_MakeTpCall+0x1fc)[0x563c973f6a1c]
-whisperfusion-1  | [25325216b0e4:00401] *** End of error message ***
+whisperfusion-1  | [9a2814a17358:02020] *** Process received signal ***
+whisperfusion-1  | [9a2814a17358:02020] Signal: Segmentation fault (11)
+whisperfusion-1  | [9a2814a17358:02020] Signal code:  (-6)
+whisperfusion-1  | [9a2814a17358:02020] Failing at address: 0x7e4
+whisperfusion-1  | [9a2814a17358:02020] [ 0] /lib/x86_64-linux-gnu/libc.so.6(+0x42520)[0x7f4445d12520]
+whisperfusion-1  | [9a2814a17358:02020] [ 1] /usr/local/lib/python3.10/dist-packages/tensorrt_llm/libs/libth_common.so(_ZN12tensorrt_llm4thop14TorchAllocator6mallocEmb+0x88)[0x7f438a0e8d58]
+whisperfusion-1  | [9a2814a17358:02020] [ 2] /usr/local/lib/python3.10/dist-packages/tensorrt_llm/libs/libtensorrt_llm.so(_ZN12tensorrt_llm6layers18DynamicDecodeLayerIfE14allocateBufferEv+0xd4)[0x7f4183b562c4]
+whisperfusion-1  | [9a2814a17358:02020] [ 3] /usr/local/lib/python3.10/dist-packages/tensorrt_llm/libs/libtensorrt_llm.so(_ZN12tensorrt_llm6layers18DynamicDecodeLayerIfE10initializeEv+0x128)[0x7f4183b59258]
+whisperfusion-1  | [9a2814a17358:02020] [ 4] /usr/local/lib/python3.10/dist-packages/tensorrt_llm/libs/libtensorrt_llm.so(_ZN12tensorrt_llm6layers18DynamicDecodeLayerIfEC1ERKNS_7runtime12DecodingModeERKNS0_13DecoderDomainEP11CUstream_stSt10shared_ptrINS_6common10IAllocatorEE+0xb1)[0x7f4183b59461]
+whisperfusion-1  | [9a2814a17358:02020] [ 5] /usr/local/lib/python3.10/dist-packages/tensorrt_llm/libs/libth_common.so(_ZN9torch_ext15FtDynamicDecodeIfEC2Emmmmii+0x270)[0x7f438a0c88a0]
+whisperfusion-1  | [9a2814a17358:02020] [ 6] /usr/local/lib/python3.10/dist-packages/tensorrt_llm/libs/libth_common.so(_ZN9torch_ext15DynamicDecodeOp14createInstanceEv+0x10f)[0x7f438a0ac14f]
+whisperfusion-1  | [9a2814a17358:02020] [ 7] /usr/local/lib/python3.10/dist-packages/tensorrt_llm/libs/libth_common.so(_ZN9torch_ext15DynamicDecodeOpC1EllllllN3c1010ScalarTypeE+0x84)[0x7f438a0ac214]
+whisperfusion-1  | [9a2814a17358:02020] [ 8] /usr/local/lib/python3.10/dist-packages/tensorrt_llm/libs/libth_common.so(_ZNSt17_Function_handlerIFvRSt6vectorIN3c106IValueESaIS2_EEEZN5torch6class_IN9torch_ext15DynamicDecodeOpEE12defineMethodIZNSB_3defIJllllllNS1_10ScalarTypeEEEERSB_NS7_6detail5typesIvJDpT_EEESsSt16initializer_listINS7_3argEEEUlNS1_14tagged_capsuleISA_EEllllllSE_E_EEPNS7_3jit8FunctionESsT_SsSN_EUlS5_E_E9_M_invokeERKSt9_Any_dataS5_+0xf8)[0x7f438a0c9058]
+whisperfusion-1  | [9a2814a17358:02020] [ 9] /usr/local/lib/python3.10/dist-packages/torch/lib/libtorch_python.so(+0xa0f48e)[0x7f44434de48e]
+whisperfusion-1  | [9a2814a17358:02020] [10] /usr/local/lib/python3.10/dist-packages/torch/lib/libtorch_python.so(+0xa0ca1f)[0x7f44434dba1f]
+whisperfusion-1  | [9a2814a17358:02020] [11] /usr/local/lib/python3.10/dist-packages/torch/lib/libtorch_python.so(+0xa0ea69)[0x7f44434dda69]
+whisperfusion-1  | [9a2814a17358:02020] [12] /usr/local/lib/python3.10/dist-packages/torch/lib/libtorch_python.so(+0x47def4)[0x7f4442f4cef4]
+whisperfusion-1  | [9a2814a17358:02020] [13] /usr/bin/python3(+0x15a10e)[0x559e519b110e]
+whisperfusion-1  | [9a2814a17358:02020] [14] /usr/bin/python3(_PyObject_MakeTpCall+0x25b)[0x559e519a7a7b]
+whisperfusion-1  | [9a2814a17358:02020] [15] /usr/bin/python3(+0x168c20)[0x559e519bfc20]
+whisperfusion-1  | [9a2814a17358:02020] [16] /usr/bin/python3(+0x28072b)[0x559e51ad772b]
+whisperfusion-1  | [9a2814a17358:02020] [17] /usr/bin/python3(_PyObject_MakeTpCall+0x25b)[0x559e519a7a7b]
+whisperfusion-1  | [9a2814a17358:02020] [18] /usr/bin/python3(_PyEval_EvalFrameDefault+0x6a79)[0x559e519a0629]
+whisperfusion-1  | [9a2814a17358:02020] [19] /usr/bin/python3(_PyFunction_Vectorcall+0x7c)[0x559e519b19fc]
+whisperfusion-1  | [9a2814a17358:02020] [20] /usr/bin/python3(_PyObject_FastCallDictTstate+0x16d)[0x559e519a6cbd]
+whisperfusion-1  | [9a2814a17358:02020] [21] /usr/bin/python3(+0x164a64)[0x559e519bba64]
+whisperfusion-1  | [9a2814a17358:02020] [22] /usr/bin/python3(_PyObject_MakeTpCall+0x1fc)[0x559e519a7a1c]
+whisperfusion-1  | [9a2814a17358:02020] [23] /usr/bin/python3(_PyEval_EvalFrameDefault+0x75a0)[0x559e519a1150]
+whisperfusion-1  | [9a2814a17358:02020] [24] /usr/bin/python3(+0x1687f1)[0x559e519bf7f1]
+whisperfusion-1  | [9a2814a17358:02020] [25] /usr/bin/python3(_PyEval_EvalFrameDefault+0x614a)[0x559e5199fcfa]
+whisperfusion-1  | [9a2814a17358:02020] [26] /usr/bin/python3(+0x1687f1)[0x559e519bf7f1]
+whisperfusion-1  | [9a2814a17358:02020] [27] /usr/bin/python3(PyObject_Call+0x122)[0x559e519c0492]
+whisperfusion-1  | [9a2814a17358:02020] [28] /usr/bin/python3(_PyEval_EvalFrameDefault+0x2a27)[0x559e5199c5d7]
+whisperfusion-1  | [9a2814a17358:02020] [29] /usr/bin/python3(_PyFunction_Vectorcall+0x7c)[0x559e519b19fc]
+whisperfusion-1  | [9a2814a17358:02020] *** End of error message ***

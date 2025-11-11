@@ -1,166 +1,176 @@
-You're hitting the same spot every time: the image builds fine, the container starts, your script gets past CUDA, then Python touches MPI and Open MPI dies with
+Right now your frontend is fine and Nginx is fine. The thing that’s supposed to listen to audio and run Whisper/LLM dies right after it warms up, so the page has nothing to talk to. That’s why “webgui loads, but mic doesn’t work.”
 
-> `opal_shmem_base_select failed`
-> `--> Returned value -1 instead of OPAL_SUCCESS`
-> container exits 1. 
+The log shows the Python process in the `whisperfusion` container segfaulting inside TensorRT-LLM’s `DynamicDecodeLayer` after the WhisperSpeech warmup finishes. That’s the smoking gun.  
 
-That’s not a “model” problem. It’s the runtime MPI layer inside the container.
+So the plan is not “fix the mic.” The plan is “keep the backend from crashing, then make sure the frontend is actually sending audio to that backend.”
 
-Let me unpack what I see and what I’d do.
-
-## 1. What’s actually failing
-
-* Your runtime script `build-models.sh` calls `build-whisper.sh` because the model dir is empty. ✔ 
-* `build-whisper.sh` does a smart CUDA fallback. That part ends up working after it installs `cuda-python==12.4.0`. ✔ 
-* After CUDA, the script starts its “SMART MPI FALLBACK STRATEGY.” That strategy tries a bunch of Open MPI knobs (tcp/self, exclude vader, mpirun wrapper, comprehensive BTL exclusion, single node). All of them fail. The reason is not your knob choice. Open MPI itself can’t init in this container. 
-* At the end, it runs `ompi_info --all | grep btl` and then `python3 build.py ...` which again pulls in MPI and dies. That’s the final “💥 ALL PROVEN MPI APPROACHES FAILED” you see. 
-
-So: the image is ok (build log ends with “WhisperFusion setup completed successfully!”). The runtime is not. 
-
-## 2. Why Open MPI fails in containers like this
-
-Inside your image you installed a full Ubuntu MPI stack:
-
-* `openmpi-bin`, `openmpi-common`, `libopenmpi-dev`, `libpmix-dev`, `libucx0`, etc. during `apt` in the Dockerfile. That’s a full distro Open MPI 4.1.2. 
-
-But at runtime, Open MPI wants a working shared-memory (shmem) backend. In Docker on Windows/Linux, that often breaks because:
-
-1. `/dev/shm` is too small or not mounted as tmpfs for the container.
-2. IPC namespaces aren’t what Open MPI expects.
-3. You run as root inside container with Open MPI’s safety checks.
-4. You have a distro Open MPI inside the image that doesn’t quite match the container runtime environment.
-
-When that happens, Open MPI never gets to the “your flags are wrong” stage. It just bails in `opal_init`, which is exactly what you have. 
-
-Your script tries to fix it by twiddling MCA vars (`OMPI_MCA_btl`, `OMPI_MCA_pml`, excluding `vader`, etc.). That’s good practice, but it only helps if the transport is fine and you just picked a bad BTL. Here the base init is bad, so all five approaches fail. So the script is doing too much for an environment that’s fundamentally not MPI-friendly. 
-
-## 3. Fastest path to green: stop using MPI for this build
-
-Look at this function in your script:
-
-```sh
-# Function to test TensorRT build with different MPI configurations
-test_tensorrt_build() {
-    ...
-    if timeout 60s python3 build.py ...; then
-        ...
-    else
-        ...
-    fi
-}
-```
-
-Even the “no-mpirun” path still executes `python3 build.py ...`. Your Python environment has `mpi4py` and an MPI-capable TensorRT-LLM stack installed during the image build (I can see a big `mpi4py` download in the build log). So at runtime, `python3 build.py` very likely imports `mpi4py` or code that initializes MPI, and that hits the same broken Open MPI. 
-
-**So one very pragmatic fix**: right before you run `python3 build.py` in `build-whisper.sh`, uninstall or neutralize MPI in that container.
-
-Something like:
-
-```sh
-# add near the top of build-whisper.sh, before MPI diagnostics
-uv pip uninstall --system -y mpi4py 2>/dev/null || true
-apt-get remove -y openmpi-bin libopenmpi-dev libopenmpi3 2>/dev/null || true
-```
-
-Then run `python3 build.py ...` without all the MPI gymnastics.
-
-That turns the build into “single-process, in-container” which is enough to generate your Whisper TensorRT engine.
-
-This is the simplest, least docker-compose-y change and it matches what you actually need right now: “make the container not exit 1 on startup.”
-
-## 4. If you actually want MPI (multi-GPU, real TensorRT-LLM style)
-
-Then we fix the container runtime instead of the script.
-
-Add this to your `docker-compose.yml` service for `whisperfusion`:
-
-```yaml
-services:
-  whisperfusion:
-    shm_size: 1gb      # give Open MPI real /dev/shm
-    ipc: host          # let it see host IPC
-    privileged: true   # often needed for HPC-y stacks in Docker Desktop
-    environment:
-      - OMPI_ALLOW_RUN_AS_ROOT=1
-      - OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
-      - OMPI_MCA_btl=tcp,self
-      - OMPI_MCA_pml=ob1
-      - OMPI_MCA_shmem=^mmap
-```
-
-Why these?
-
-* `shm_size` and `ipc: host` tend to make `opal_shmem_base_select` happy in containers.
-* You’re already exporting `OMPI_ALLOW_RUN_AS_ROOT` in the script. Put it in compose so it’s always there. 
-* `OMPI_MCA_shmem=^mmap` is a useful extra hammer for “shmem selection failed” cases.
-
-If you do this, your current script’s five attempts are more likely to succeed without you having to rip out MPI.
-
-## 5. Dockerfile cleanup I’d do
-
-Your build log shows a pretty heavy image:
-
-* base: `nvcr.io/nvidia/pytorch:24.03-py3`
-* 200+ apt packages including `openmpi`, `ffmpeg`, desktop-ish libs. 
-* then a gigantic `uv pip` step pulling TensorRT 10, TensorRT-LLM 0.10.0, CUDA 12.x wheels. 
-
-So right now you’re paying for MPI inside the image even though it crashes at runtime.
-
-I’d split this:
-
-1. **build stage**: install openmpi and mpi4py to let you build whatever needs MPI.
-2. **runtime stage**: copy only the built artifacts (your `whisper_small_en` engine, model, scripts) into a slimmer image that doesn’t have openmpi at all.
-
-That way your container start doesn’t even see MPI, so it can’t crash.
-
-## 6. Your script is doing more work than the environment can support
-
-The CUDA part is smart and it actually succeeded. That tells us your base GPU tooling inside the image is fine. The only real outlier is MPI. So I’d refactor `build-whisper.sh` roughly like this:
-
-1. run CUDA diagnostics (keep)
-2. try `python3 build.py ...` **once**
-3. if error message mentions MPI / Open MPI / opal, then:
-
-   * uninstall mpi4py and re-run
-   * if still bad, print a “you need ipc: host + bigger /dev/shm” message and exit nonzero
-
-Right now the script tries 5 MPI approaches that can’t work in this container, which just makes the logs noisy. You saw it loop through them. 
-
-## 7. Things you might be assuming (that I’d question)
-
-* **Assumption:** “TensorRT-LLM build must use MPI.”
-  Not always. For a single small Whisper engine, you can often just run the builder in one process.
-
-* **Assumption:** “Fix is inside Python.”
-  Not in this case. The error is from the native Open MPI layer before Python can do much.
-
-* **Assumption:** “The image is the problem because the build log is long.”
-  Build succeeded. Runtime environment is the problem. Different place. 
-
-## 8. A better prompt you could’ve given me
-
-Something like:
-
-> “I have a Dockerized Whisper/TensorRT build. Image builds fine. At container start a shell script runs `python3 build.py ...`. That script imports mpi4py/Open MPI and dies with `opal_shmem_base_select failed` inside the container. I’m on Docker Desktop (Windows). Show me the simplest way to: 1) make the container not crash, 2) optionally keep MPI working.”
-
-That would have told me up front that we can just remove MPI from runtime or grow `/dev/shm`.
+Here’s a strategy broken into stages.
 
 ---
 
-## TL;DR recommendations
+### 1. Stabilize the backend so it stops crashing
 
-1. **Quick win (do this first):** uninstall MPI in the runtime script before build:
+Goal: get the `whisperfusion` container to stay alive after warmup.
 
-   ```sh
-   uv pip uninstall --system -y mpi4py || true
-   apt-get remove -y openmpi-bin libopenmpi3 libopenmpi-dev || true
-   python3 build.py ...
-   ```
+What we know:
 
-   That should stop the container from exiting 1.
+* You already try to patch TensorRT-LLM to force FP32 and remove MPI in both build and run scripts. 
+* Even with those patches, it still crashes inside `DynamicDecodeLayer` at runtime. That means the patch isn’t taking effect for the code path that’s actually being run. Maybe the file was patched after import, or the model is still built in a way that triggers TRT’s dynamic decode anyway. 
 
-2. **If you want MPI to work instead of removing it:** update `docker-compose.yml` for that service with `shm_size: 1gb`, `ipc: host`, and the OMPI env vars above.
+What to do:
 
-3. **Longer term:** build MPI in a build stage, keep runtime MPI-free.
+1. **Make the runtime as dumb as possible first.**
 
-If you tell me which of those 3 paths you want (no-MPI, fix-MPI, or slim-image), I can write the exact `Dockerfile`/compose diff next.
+   * Add an env flag and branch in your entrypoint (`run-whisperfusion.sh`) to start the app without loading the TRT-LLM speech/LLM part. For example, start only the HTTP/WebSocket server part of WhisperFusion and skip model warmup.
+   * If the container now stays up, we’ve proven the crash is in model init, not the web stack.
+
+2. **Make sure the patch runs before Python imports `tensorrt_llm`.**
+
+   * In `run-whisperfusion.sh` you already sed `dynamic_decode.py`. Move that block earlier, and right after it, add `python3 -c "import tensorrt_llm; from tensorrt_llm.layers import dynamic_decode; print(dynamic_decode.DynamicDecodeLayer)"` to force-import and fail fast. If that single-line import crashes, you fix it there, not 2 minutes later when the web GUI is waiting. 
+
+3. **Temporarily disable the TRT dynamic decode path.**
+
+   * Easiest way in a containerized setup is to set an env the app checks, e.g. `WF_DISABLE_TRT_DDECODE=1`, and in your Python startup, wrap the import or the call site in a try/except and fall back to a pure PyTorch decode. That will be slower but it will not segfault. Right now your image is over-optimized for TRT and under-optimized for “just work.”
+
+4. **Stop rebuilding everything on every container start.**
+
+   * Your logs show that every `docker compose up` runs `build-models.sh` and forces FP32 rebuilds. Long running startup plus lots of patching increases the chance you change TRT files after they were compiled or cached. Refactor to:
+
+     1. Build models at image build time or
+     2. Build once into a volume `/root/scratch-space/models`
+     3. At runtime only check for presence and skip rebuild.
+   * That will make failures more reproducible. 
+
+If we can get to “container stays up, even if slower,” we can actually debug audio.
+
+---
+
+### 2. Verify the WebSocket/audio path from browser to container
+
+Once the backend doesn’t die, check the actual IO chain.
+
+1. **Browser to Nginx.**
+
+   * Your Nginx is serving the GUI. Good. You need to confirm it is also proxying the WebSocket endpoint that carries audio, not just HTTP. Check your `nginx.conf` for `upgrade` and `connection` headers on that route.
+
+2. **Nginx to whisperfusion container.**
+
+   * Right now if the Python process inside the container exits, Nginx will still happily serve the GUI. That is exactly what you’re seeing.
+   * After stabilizing the backend, open DevTools → Network → record tab in the browser and click the mic. You should see either:
+
+     * a WebSocket that stays open and sends binary chunks, or
+     * a POST/upload hitting some `/transcribe` route.
+   * If you see 502 or WebSocket close right away, it means the container route is bad or the process isn’t listening.
+
+3. **Audio capture format.**
+
+   * Some of these web UIs send `audio/webm` with Opus. If your backend code expects WAV/PCM, it will ignore it. You need to check the backend handler to see what MIME and sample rate it expects and make the frontend match it.
+
+So the plan here is: stabilize → open browser Network panel → confirm the request type → make sure Nginx forwards it.
+
+---
+
+### 3. Simplify the model stack to isolate the fault
+
+Your container is doing a lot in one go:
+
+* build Whisper TRT
+* build Phi TRT
+* patch TRT
+* then start WhisperSpeech
+  This is a lot of moving parts for “I just want mic working.” 
+
+Do this in layers:
+
+1. **Layer A: pure Whisper CPU/GPU without TRT-LLM.**
+
+   * Start the container with an env like `WF_MODE=whisper-only`.
+   * In this mode the web GUI should be able to send audio and you return text using plain torch/whisper. If this works, WebRTC/WebSocket is good.
+
+2. **Layer B: TRT Whisper only.**
+
+   * Add back the TRT whisper engine but not the LLM/TTS. Your build script already produces `whisper_small_en/whisper_encoder...engine`. Use only that path. 
+
+3. **Layer C: add LLM/TTS.**
+
+   * Once B is stable, reintroduce the Phi/TensorRT-LLM piece.
+
+That gives you a fast bisect path.
+
+---
+
+### 4. Clean up the Docker workflow
+
+To make the above repeatable, do this:
+
+1. **Separate build-time and run-time scripts.**
+
+   * Anything that does `apt-get remove ...` or `uv pip install ...` should happen at build time. Your current runtime script is doing package ops every start. That increases surface for subtle ABI mismatches with TRT. Move these into the Dockerfile or into a dedicated “prepare image” script. 
+
+2. **Pin the torch/torchaudio pair once.**
+
+   * You already install a compatible pair at runtime. Do this once in the image. Multiple installs at runtime could leave stale compiled TRT Python extensions on disk that were built against a different torch. That can cause the exact kind of segfault you see.
+
+3. **Use a volume for models.**
+
+   * Mount `/root/scratch-space/models` from the host. Then you can rebuild once, outside, and run many times inside without doing TRT builds.
+
+---
+
+### 5. Add diagnostic endpoints/logging
+
+You’re a principal, so give yourself cheap observability.
+
+1. **Health endpoint in the Python app** that returns:
+
+   * “I loaded whisper”
+   * “I loaded TRT”
+   * “I can allocate on GPU”
+     If this crashes, you don’t even need the web GUI to know.
+
+2. **Log every audio request** with size, mimetype, and whether it reached the recognizer.
+
+3. **Fail fast if TRT is unavailable.**
+
+   * Instead of segfaulting 2 minutes in, detect on startup and downgrade to CPU whisper.
+
+---
+
+### 6. If the goal is “TRT-LLM must stay,” then get stricter
+
+Your logs show the crash is specifically in `TorchAllocator::malloc` called from TRT-LLM’s `DynamicDecodeLayer<float>::allocateBuffer()` even after you tried to force FP32. So if we must keep TRT-LLM:
+
+1. Make sure `TENSORRT_DISABLE_FP16=1` and `TRT_FORCE_FP32=1` are exported in the same shell that starts Python. You do export them during model build. Export them again right before `python app.py` runs. Sometimes the model is FP32 but runtime still tries half. 
+
+2. Reduce max sequence/batch in the TRT build to reduce the buffer size that allocateBuffer tries to get. You do have huge activation sizes in the log. Lowering those often avoids the alloc path that crashes. 
+
+3. Worst case, vendor-patch `tensorrt_llm/layers/dynamic_decode.py` to wrap the torch extension create call in try/except and fall back.
+
+---
+
+### 7. After it’s stable, fix the user flow
+
+When the backend is up, test the actual feature:
+
+1. Start containers.
+2. Open GUI.
+3. Open DevTools.
+4. Hit mic.
+5. Speak.
+6. Confirm request goes out and response comes back.
+
+If at step 5 the container now logs an error about unknown audio format, fix that in the frontend or add a conversion step in the backend.
+
+---
+
+### A better prompt you could have used
+
+You said to tell you this. A tighter prompt would have been:
+
+> “I have a dockerized WhisperFusion setup with two containers, Nginx and backend. The GUI loads from Nginx but the backend container segfaults after TensorRT-LLM warms up, so the mic never sends audio through. Here are the docker build logs, docker runtime logs, and the entrypoint scripts. Tell me how to refactor the startup so the backend doesn’t crash, how to disable TRT temporarily, and how to verify the browser actually sends audio to the backend.”
+
+That would have let me skip guessing whether the issue was browser permissions vs backend crash.
+
+---
+
+If you do the stages in that order, the symptom you care about (“mic doesn’t work”) should disappear right after stage 1 and 2, because the real blocker was the backend dying, not the mic.

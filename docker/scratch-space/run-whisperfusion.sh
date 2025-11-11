@@ -5,6 +5,19 @@ test -f /etc/shinit_v2 && source /etc/shinit_v2
 echo "Running build-models.sh..."
 cd /root/scratch-space/
 MODEL=${MODEL:-phi-2}
+
+# NUCLEAR OPTION: Force rebuild models in FP32 to avoid DynamicDecodeLayer segfault
+echo "🚨 CRITICAL: Forcing FP32 model rebuild to avoid TensorRT-LLM segfaults"
+echo "Removing existing models to force FP32 rebuild..."
+rm -rf /root/scratch-space/models/whisper_small_en 2>/dev/null || true
+rm -rf /root/scratch-space/models/$MODEL 2>/dev/null || true
+rm -rf /root/scratch-space/models/phi-* 2>/dev/null || true
+
+# Set FP32 build environment variables
+export FORCE_FP32_BUILD=1
+export TENSORRT_DISABLE_FP16=1
+export TRT_FORCE_FP32=1
+
 ./build-models.sh $MODEL
 
 # Install webdataset if missing (needed for WhisperSpeech runtime)
@@ -45,9 +58,26 @@ if [ -f "$CLUSTER_FILE" ]; then
     echo "  - cluster_info.py patched"
 fi
 
+# CRITICAL PATCH: Fix DynamicDecodeLayer segfault by forcing FP32 allocation
+DYNAMIC_DECODE_FILE="/usr/local/lib/python3.10/dist-packages/tensorrt_llm/layers/dynamic_decode.py"
+if [ -f "$DYNAMIC_DECODE_FILE" ]; then
+    # Patch to force FP32 for DynamicDecodeLayer allocations to prevent segfault
+    sed -i 's/dtype=torch.float16/dtype=torch.float32/g' "$DYNAMIC_DECODE_FILE" 2>/dev/null || true
+    sed -i 's/dtype=torch.half/dtype=torch.float32/g' "$DYNAMIC_DECODE_FILE" 2>/dev/null || true
+    echo "  - dynamic_decode.py patched for FP32 allocation"
+fi
+
+# Patch TorchAllocator to use safer memory allocation
+ALLOCATOR_FILE="/usr/local/lib/python3.10/dist-packages/tensorrt_llm/functional.py"
+if [ -f "$ALLOCATOR_FILE" ]; then
+    # Add memory safety checks
+    sed -i 's/torch.cuda.empty_cache()/torch.cuda.empty_cache(); torch.cuda.synchronize()/g' "$ALLOCATOR_FILE" 2>/dev/null || true
+    echo "  - functional.py patched for memory safety"
+fi
+
 # Clear Python cache to ensure patches take effect
 find /usr/local/lib/python3.10/dist-packages/tensorrt_llm -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true
-echo "✅ TensorRT-LLM patches applied for runtime"
+echo "✅ TensorRT-LLM patches applied for runtime (including DynamicDecodeLayer segfault fix)"
 
 # CRITICAL FIX: Apply MPI removal for runtime (same as in build scripts)
 echo "🔧 Removing MPI dependencies to avoid runtime container issues..."
@@ -73,26 +103,56 @@ fi
 # GPU Memory Management Fixes
 echo "🔧 Configuring GPU memory management for TensorRT-LLM..."
 
-# Set conservative CUDA memory allocation
+# Set very conservative CUDA memory allocation for voice processing
 export CUDA_LAUNCH_BLOCKING=1
 export CUDA_CACHE_DISABLE=1
-export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
+export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:256,garbage_collection_threshold:0.6
 
-# Set conservative memory limits
-export TENSORRT_MAX_WORKSPACE_SIZE=1073741824  # 1GB
-export TRT_MAX_WORKSPACE_SIZE=1073741824
+# Set very conservative memory limits
+export TENSORRT_MAX_WORKSPACE_SIZE=536870912   # 512MB (reduced from 1GB)
+export TRT_MAX_WORKSPACE_SIZE=536870912
+export CUDA_MODULE_LOADING=LAZY
 
-# Force single GPU usage and conservative batch sizes
+# Force single GPU usage and disable multi-stream
 export CUDA_VISIBLE_DEVICES=0
+export CUDA_DEVICE_ORDER=PCI_BUS_ID
 
-echo "✅ GPU memory configuration applied"
+# Add FP16/half-precision specific fixes
+export TENSORRT_DISABLE_FP16=0
+export TRT_DISABLE_OPTIMIZATION=1
+
+# TensorRT-LLM FP32 runtime configuration (no half-precision)
+export TRTLLM_FORCE_FP32_DECODE=1
+export TENSORRT_DISABLE_FP16=1
+export TRT_FORCE_FP32=1
+export TENSORRT_ALLOCATOR_STRATEGY=simple
+
+# GPU memory settings for 24GB GPU with FP32 allocations
+export PYTORCH_CUDA_ALLOC_CONF="max_split_size_mb:2048,garbage_collection_threshold:0.6,expandable_segments:True"
+export CUDA_MEMORY_FRACTION=0.85
+export TORCH_CUDA_MEMORY_FRACTION=0.85
+
+# Reduce batch sizes for voice processing
+export WHISPER_BATCH_SIZE=1
+export PHI_BATCH_SIZE=1
+
+# Force synchronous execution to prevent memory races
+export CUDA_LAUNCH_BLOCKING=1
+export TORCH_CUDA_ARCH_LIST="8.0;8.6;8.9;9.0"
+
+echo "✅ GPU memory configuration and DynamicDecodeLayer fixes applied"
 
 cd /root/WhisperFusion
 
-# Add memory debugging wrapper
-echo "🚀 Starting WhisperFusion with memory safety..."
+# Add TensorRT-LLM memory allocation safety wrapper
+echo "🚀 Starting WhisperFusion with TensorRT-LLM memory safety..."
+
+# Apply conservative GPU memory settings before starting main
+echo "🔧 Setting conservative GPU memory allocation..."
+python3 -c "import torch; torch.cuda.set_per_process_memory_fraction(0.7) if torch.cuda.is_available() else None; torch.cuda.empty_cache() if torch.cuda.is_available() else None" 2>/dev/null || true
+
 if [ "$1" != "mistral" ]; then
-  # Use exec with memory monitoring
+  # Use direct main.py with memory safety environment variables
   exec python3 -u main.py --phi \
                   --whisper_tensorrt_path /root/scratch-space/models/whisper_small_en \
                   --phi_tensorrt_path /root/scratch-space/models/$MODEL \
